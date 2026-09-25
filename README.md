@@ -10,6 +10,9 @@ ChatPilot is a focused React study assistant for learning frontend fundamentals 
 - Responsive layout for desktop, tablet, and mobile
 - Light and dark themes
 - Clean learning progress panel
+- Google sign-in with Firebase Authentication
+- Public welcome experience for new users
+- Vercel-ready SPA deployment
 
 ## Technologies Used
 
@@ -18,12 +21,37 @@ ChatPilot is a focused React study assistant for learning frontend fundamentals 
 - JavaScript
 - CSS
 - Oxlint
+- Firebase Authentication
 
 ## Installation
 
 ```bash
 npm install
 ```
+
+## Google Sign-In Setup
+
+1. Create a Firebase project and register a Web app.
+2. Enable **Authentication > Sign-in method > Google** in the Firebase console.
+3. Copy `.env.example` to `.env.local` and fill in the Firebase Web app configuration values.
+4. Add `localhost` and your Vercel domain under **Authentication > Settings > Authorized domains**.
+
+The app opens Google's consent flow with Firebase `signInWithPopup`. The learning workspace is private and the signed-in user's Google profile supplies the displayed name and initials.
+
+## Deploying to Vercel
+
+Import the repository into Vercel with the default Vite settings. Add these environment variables in the Vercel project settings:
+
+```text
+VITE_FIREBASE_API_KEY
+VITE_FIREBASE_AUTH_DOMAIN
+VITE_FIREBASE_PROJECT_ID
+VITE_FIREBASE_STORAGE_BUCKET
+VITE_FIREBASE_MESSAGING_SENDER_ID
+VITE_FIREBASE_APP_ID
+```
+
+The included `vercel.json` keeps client-side routes working on refresh. The app uses the domain root as its Vite base path for Vercel deployment.
 
 ## Running Locally
 
@@ -46,6 +74,7 @@ src/
 ├── App.jsx       # Main application and interactive state
 ├── App.css       # ChatPilot layout and responsive styles
 ├── index.css     # Global browser styles
+├── lib/firebase.js # Firebase browser client
 └── main.jsx      # React entry point
 ```
 
@@ -63,12 +92,14 @@ The app uses React `useState` to manage the active view, chat messages, mock res
 - Answer quiz questions and restart the quiz
 - Toggle light and dark themes
 - Check the layout at mobile width
+- Confirm the welcome screen when signed out
+- Confirm Google sign-in and sign-out with Firebase configured
 - Run `npm run build` and confirm there are no errors
 
 ## Future Improvements
 
 - Connect chat to a secure backend and AI provider
-- Save conversations and progress with user accounts
+- Save conversations and progress with the authenticated user
 - Add more study decks and quiz topics
 - Add markdown response formatting
 - Add a progress history page

@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth'
+import { auth, googleProvider, isFirebaseConfigured } from './lib/firebase'
 import './App.css'
 
 const starterPrompts = [
@@ -19,7 +21,44 @@ const quizQuestions = [
   { question: 'What are props used for?', options: ['Styling only', 'Passing data to components', 'Starting a server'], answer: 'Passing data to components' },
 ]
 
+function WelcomeScreen({ error, isSigningIn, onSignIn }) {
+  return (
+    <main className="welcome-page">
+      <section className="welcome-copy">
+        <div className="brand welcome-brand"><span className="brand-mark">✦</span><span>chatpilot</span></div>
+        <span className="welcome-kicker">A calmer way to learn</span>
+        <h1>Make progress feel <em>possible.</em></h1>
+        <p className="welcome-description">A focused learning space for curious minds. Ask better questions, build recall, and keep your momentum in one quiet place.</p>
+        <div className="welcome-actions">
+          <button className="google-button" onClick={onSignIn} disabled={isSigningIn || !isFirebaseConfigured} type="button">
+            <span className="google-mark">G</span>
+            {isSigningIn ? 'Opening Google...' : 'Continue with Google'}
+          </button>
+          {!isFirebaseConfigured && <p className="setup-message">Add your Firebase environment variables to enable Google sign-in.</p>}
+          {error && <p className="auth-error" role="alert">{error}</p>}
+        </div>
+        <small className="welcome-footnote">Your workspace is private to you.</small>
+      </section>
+      <section className="welcome-preview" aria-label="ChatPilot workspace preview">
+        <div className="preview-glow"></div>
+        <div className="preview-window">
+          <div className="preview-topline"><span>✦ chatpilot</span><span className="preview-status">● in focus</span></div>
+          <div className="preview-question">What are we learning today?</div>
+          <div className="preview-message"><span className="preview-avatar">✦</span><p>Break big ideas into small examples, then test each one.</p></div>
+          <div className="preview-prompt">Explain the difference between props and state <span>↗</span></div>
+          <div className="preview-prompt short">Give me a 20-minute study plan <span>↗</span></div>
+        </div>
+        <div className="preview-note"><strong>01</strong><span>Learn at your own pace<br />with less noise.</span></div>
+      </section>
+    </main>
+  )
+}
+
 function App() {
+  const [session, setSession] = useState(null)
+  const [authLoading, setAuthLoading] = useState(isFirebaseConfigured)
+  const [isSigningIn, setIsSigningIn] = useState(false)
+  const [authError, setAuthError] = useState('')
   const [activeView, setActiveView] = useState('chat')
   const [darkMode, setDarkMode] = useState(false)
   const [input, setInput] = useState('')
@@ -31,6 +70,36 @@ function App() {
   const [selectedAnswer, setSelectedAnswer] = useState('')
   const [score, setScore] = useState(0)
   const [quizFinished, setQuizFinished] = useState(false)
+
+  useEffect(() => {
+    if (!auth) return undefined
+
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setSession(currentUser)
+      setAuthLoading(false)
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [])
+
+  async function signInWithGoogle() {
+    if (!auth) return
+    setAuthError('')
+    setIsSigningIn(true)
+    try {
+      await signInWithPopup(auth, googleProvider)
+    } catch (error) {
+      setAuthError(error.code === 'auth/popup-closed-by-user' ? 'The Google sign-in window was closed.' : error.message)
+      setIsSigningIn(false)
+    }
+  }
+
+  async function signOut() {
+    await firebaseSignOut(auth)
+    setSession(null)
+  }
 
   function sendMessage(message = input) {
     const trimmedMessage = message.trim()
@@ -64,6 +133,13 @@ function App() {
 
   const currentQuestion = quizQuestions[quizIndex]
 
+  if (authLoading) return <div className="auth-loading"><span className="brand-mark">✦</span><p>Preparing your workspace...</p></div>
+  if (!session) return <WelcomeScreen error={authError} isSigningIn={isSigningIn} onSignIn={signInWithGoogle} />
+
+  const user = session
+  const userName = user.displayName || user.email?.split('@')[0] || 'Learner'
+  const userInitials = userName.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()
+
   return (
     <div className={`app-shell ${darkMode ? 'dark' : ''}`}>
       <aside className="sidebar">
@@ -72,10 +148,10 @@ function App() {
         <nav className="nav-list" aria-label="Main navigation">
           {[['chat', '◌', 'Study chat'], ['flashcards', '▣', 'Flashcards'], ['quiz', '✓', 'Quick quiz']].map(([view, icon, label]) => <button className={`nav-item ${activeView === view ? 'active' : ''}`} key={view} onClick={() => setActiveView(view)} type="button"><span>{icon}</span>{label}</button>)}
         </nav>
-        <div className="sidebar-bottom"><div className="streak-card"><span className="streak-icon">✦</span><div><strong>4 day streak</strong><small>Keep the momentum going</small></div></div><button className="profile" type="button"><span className="avatar">AS</span><span><strong>Alex Student</strong><small>Personal workspace</small></span><span className="more">•••</span></button></div>
+        <div className="sidebar-bottom"><div className="streak-card"><span className="streak-icon">✦</span><div><strong>4 day streak</strong><small>Keep the momentum going</small></div></div><button className="profile" onClick={signOut} type="button" title="Sign out"><span className="avatar">{userInitials}</span><span><strong>{userName}</strong><small>Sign out</small></span><span className="more">•••</span></button></div>
       </aside>
       <main className="main-content">
-        <header className="topbar"><div><span className="eyebrow">PERSONAL LEARNING SPACE</span><h1>{activeView === 'chat' ? 'Good morning, Alex' : activeView === 'flashcards' ? 'Review your knowledge' : 'Test your understanding'}</h1></div><button className="theme-button" onClick={() => setDarkMode((current) => !current)} type="button" aria-label="Toggle theme">{darkMode ? '☀' : '☾'}</button></header>
+        <header className="topbar"><div><span className="eyebrow">PERSONAL LEARNING SPACE</span><h1>{activeView === 'chat' ? `Good morning, ${userName.split(' ')[0]}` : activeView === 'flashcards' ? 'Review your knowledge' : 'Test your understanding'}</h1></div><button className="theme-button" onClick={() => setDarkMode((current) => !current)} type="button" aria-label="Toggle theme">{darkMode ? '☀' : '☾'}</button></header>
         {activeView === 'chat' && <section className="content-grid"><div className="chat-panel panel"><div className="panel-heading"><div><span className="section-kicker">AI STUDY ASSISTANT</span><h2>What are we learning today?</h2></div><button className="quiet-button" onClick={() => setMessages([{ role: 'assistant', text: 'Welcome back. What would you like to learn today?' }])} type="button">Clear chat</button></div><div className="messages" aria-live="polite">{messages.map((message, index) => <div className={`message-row ${message.role}`} key={`${message.role}-${index}`}><div className="message-avatar">{message.role === 'assistant' ? '✦' : 'AS'}</div><div className="message-bubble"><span className="message-name">{message.role === 'assistant' ? 'ChatPilot' : 'You'}</span><p>{message.text}</p></div></div>)}{isTyping && <div className="message-row assistant"><div className="message-avatar">✦</div><div className="message-bubble typing"><span></span><span></span><span></span></div></div>}</div><div className="prompt-area"><span className="section-kicker">TRY ASKING</span><div className="prompt-list">{starterPrompts.map((prompt) => <button type="button" key={prompt} onClick={() => sendMessage(prompt)}>{prompt}<span>↗</span></button>)}</div><form className="chat-form" onSubmit={(event) => { event.preventDefault(); sendMessage() }}><input value={input} onChange={(event) => setInput(event.target.value)} placeholder="Ask anything about your studies..." aria-label="Ask ChatPilot" /><button type="submit" aria-label="Send message">↑</button></form><small className="mock-note">ChatPilot is using thoughtful mock responses for now. Your learning data stays in this browser.</small></div></div><aside className="right-rail"><div className="panel today-card"><span className="section-kicker">TODAY'S PROGRESS</span><div className="progress-ring"><strong>68%</strong><span>complete</span></div><p>You are building a consistent learning habit.</p><div className="progress-line"><span style={{ width: '68%' }}></span></div><div className="stats"><span><strong>12</strong> questions</span><span><strong>24m</strong> study time</span></div></div><div className="panel focus-card"><span className="section-kicker">YOUR FOCUS</span><h3>React fundamentals</h3><p>Continue where you left off in your frontend study path.</p><button type="button" onClick={() => setActiveView('flashcards')}>Open flashcards <span>→</span></button></div></aside></section>}
         {activeView === 'flashcards' && <section className="single-view"><div className="view-intro"><div><span className="section-kicker">ACTIVE DECK · REACT FUNDAMENTALS</span><h2>Build recall, one card at a time.</h2><p>Flip each card to reveal the answer. Short, focused reviews make knowledge stick.</p></div><span className="counter">{cardIndex + 1} / {flashcards.length}</span></div><button className="flashcard" onClick={() => setIsCardFlipped((current) => !current)} type="button"><span className="card-label">{isCardFlipped ? 'ANSWER' : 'QUESTION'}</span><strong>{isCardFlipped ? flashcards[cardIndex].back : flashcards[cardIndex].front}</strong><small>Click to flip</small></button><div className="card-controls"><button type="button" onClick={() => { setCardIndex((current) => (current - 1 + flashcards.length) % flashcards.length); setIsCardFlipped(false) }}>← Previous</button><button className="primary-button" type="button" onClick={() => { setCardIndex((current) => (current + 1) % flashcards.length); setIsCardFlipped(false) }}>Next card →</button></div></section>}
         {activeView === 'quiz' && <section className="single-view quiz-view"><div className="view-intro"><div><span className="section-kicker">QUICK QUIZ · REACT FUNDAMENTALS</span><h2>Check what you know.</h2><p>Three questions. No pressure. Just a clearer picture of what to review next.</p></div><span className="counter">{quizFinished ? 'Complete' : `${quizIndex + 1} / ${quizQuestions.length}`}</span></div>{quizFinished ? <div className="quiz-result"><span className="result-star">✦</span><span className="section-kicker">QUIZ COMPLETE</span><h3>{score} out of {quizQuestions.length}</h3><p>{score === quizQuestions.length ? 'Excellent work. You have a strong grasp of these fundamentals.' : 'A solid start. Review the flashcards and try again when you are ready.'}</p><button className="primary-button" type="button" onClick={resetQuiz}>Try again</button></div> : <div className="quiz-card"><span className="question-number">QUESTION {quizIndex + 1}</span><h3>{currentQuestion.question}</h3><div className="options">{currentQuestion.options.map((option) => <button className={selectedAnswer ? option === currentQuestion.answer ? 'correct' : option === selectedAnswer ? 'wrong' : '' : ''} key={option} onClick={() => chooseAnswer(option)} type="button">{option}<span>{selectedAnswer && option === currentQuestion.answer ? '✓' : ''}</span></button>)}</div>{selectedAnswer && <button className="primary-button next-question" type="button" onClick={nextQuestion}>{quizIndex === quizQuestions.length - 1 ? 'See results' : 'Next question →'}</button>}</div>}</section>}
