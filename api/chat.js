@@ -23,18 +23,27 @@ export default async function handler(request, response) {
 
   try {
     const geminiResponse = await fetch(
-`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [{ text: 'You are ChatPilot, a precise and encouraging learning assistant. Answer the user directly, explain unfamiliar ideas clearly, and use Google Search grounding when the question needs current or factual web information. Do not claim you searched if you did not. Use short paragraphs and simple markdown when helpful.' }],
-          },
-          contents,
-          tools: [{ googleSearch: {} }],
-generationConfig: { maxOutputTokens: 1200 },        }),
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent',
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{
+          text: 'You are ChatPilot, a precise and encouraging learning assistant. Answer the user directly, explain unfamiliar ideas clearly, and use Google Search grounding when the question needs current or factual web information. Do not claim you searched if you did not. Use short paragraphs and simple markdown when helpful.'
+        }],
       },
-    )
+      contents,
+      tools: [{ googleSearch: {} }],
+      generationConfig: {
+        maxOutputTokens: 1200,
+      },
+    }),
+  },
+)
 
     const data = await geminiResponse.json()
     if (!geminiResponse.ok) {

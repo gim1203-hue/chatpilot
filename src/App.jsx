@@ -145,30 +145,69 @@ function App() {
   }
 
   async function sendMessage(message = input) {
-    const trimmedMessage = message.trim()
-    if (!trimmedMessage || isTyping) return
-    const userMessage = { role: 'user', text: trimmedMessage }
-    const conversation = [...messages, userMessage]
-    setMessages(conversation)
-    setInput('')
-    setIsTyping(true)
+  const trimmedMessage = message.trim()
 
-    try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: conversation }),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'ChatPilot could not answer right now.')
-      setMessages((current) => [...current, { role: 'assistant', text: data.text }])
-    } catch (error) {
-      setMessages((current) => [...current, { role: 'assistant', text: `I could not answer that yet. ${error.message}` }])
-    } finally {
-      setIsTyping(false)
-    }
+  if (!trimmedMessage || isTyping) return
+
+  const userMessage = {
+    role: 'user',
+    text: trimmedMessage,
   }
 
+  const conversation = [...messages, userMessage]
+
+  setMessages(conversation)
+  setInput('')
+  setIsTyping(true)
+
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        messages: conversation,
+      }),
+    })
+
+    const contentType = response.headers.get('content-type') || ''
+
+    if (!contentType.includes('application/json')) {
+      const rawText = await response.text()
+
+      console.error('Non-JSON response from /api/chat:', rawText)
+
+      throw new Error(
+        `Server returned HTML instead of JSON. Status: ${response.status}`
+      )
+    }
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || 'ChatPilot could not answer right now.')
+    }
+
+    setMessages((current) => [
+      ...current,
+      {
+        role: 'assistant',
+        text: data.text,
+      },
+    ])
+  } catch (error) {
+    setMessages((current) => [
+      ...current,
+      {
+        role: 'assistant',
+        text: `I could not answer that yet. ${error.message}`,
+      },
+    ])
+  } finally {
+    setIsTyping(false)
+  }
+}
   function resetQuiz() {
     setQuizIndex(0)
     setSelectedAnswer('')
