@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { browserLocalPersistence, getRedirectResult, onAuthStateChanged, setPersistence, signInWithRedirect, signOut as firebaseSignOut } from 'firebase/auth'
+import { browserLocalPersistence, getRedirectResult, onAuthStateChanged, setPersistence, signInWithPopup, signInWithRedirect, signOut as firebaseSignOut } from 'firebase/auth'
 import { auth, googleProvider, isFirebaseConfigured } from './lib/firebase'
 import './App.css'
 
@@ -115,13 +115,26 @@ function App() {
     setIsSigningIn(true)
     try {
       await setPersistence(auth, browserLocalPersistence)
-      await signInWithRedirect(auth, googleProvider)
+      const result = await signInWithPopup(auth, googleProvider)
+      setSession(result.user)
+      setAuthLoading(false)
+      setIsSigningIn(false)
     } catch (error) {
+      let authFailure = error
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/web-storage-unsupported') {
+        try {
+          await signInWithRedirect(auth, googleProvider)
+          return
+        } catch (redirectError) {
+          authFailure = redirectError
+        }
+      }
       const messages = {
+        'auth/popup-closed-by-user': 'The Google sign-in window was closed before login finished.',
         'auth/unauthorized-domain': `Firebase does not allow ${window.location.hostname} yet. Add this domain in Firebase Authentication settings.`,
         'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase Authentication yet.',
       }
-      setAuthError(messages[error.code] || 'Google sign-in could not start. Check your Firebase Authentication settings and try again.')
+      setAuthError(messages[authFailure.code] || 'Google sign-in could not start. Check your Firebase Authentication settings and try again.')
       setIsSigningIn(false)
     }
   }
