@@ -74,25 +74,34 @@ function App() {
   useEffect(() => {
     if (!auth) return undefined
 
-    setPersistence(auth, browserLocalPersistence).catch((error) => {
-      setAuthError(error.message)
-    })
+    let cancelled = false
+    let unsubscribe
 
-    getRedirectResult(auth).catch((error) => {
-      const messages = {
-        'auth/unauthorized-domain': `Firebase does not allow ${window.location.hostname} yet. Add this domain in Firebase Authentication settings.`,
-        'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase Authentication yet.',
+    async function initializeAuth() {
+      try {
+        await setPersistence(auth, browserLocalPersistence)
+        await getRedirectResult(auth)
+      } catch (error) {
+        const messages = {
+          'auth/unauthorized-domain': `Firebase does not allow ${window.location.hostname} yet. Add this domain in Firebase Authentication settings.`,
+          'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase Authentication yet.',
+        }
+        if (!cancelled) setAuthError(messages[error.code] || 'Google sign-in could not be completed. Please try again.')
       }
-      setAuthError(messages[error.code] || 'Google sign-in could not be completed. Please try again.')
-    })
 
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setSession(currentUser)
-      setAuthLoading(false)
-    })
+      if (cancelled) return
+      unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setSession(currentUser)
+        setAuthLoading(false)
+        setIsSigningIn(false)
+      })
+    }
+
+    initializeAuth()
 
     return () => {
-      unsubscribe()
+      cancelled = true
+      unsubscribe?.()
     }
   }, [])
 
