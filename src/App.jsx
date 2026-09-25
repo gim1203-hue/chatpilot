@@ -80,7 +80,11 @@ function App() {
     async function initializeAuth() {
       try {
         await setPersistence(auth, browserLocalPersistence)
-        await getRedirectResult(auth)
+        const redirectResult = await getRedirectResult(auth)
+        if (redirectResult?.user && !cancelled) {
+          setSession(redirectResult.user)
+          setAuthLoading(false)
+        }
       } catch (error) {
         const messages = {
           'auth/unauthorized-domain': `Firebase does not allow ${window.location.hostname} yet. Add this domain in Firebase Authentication settings.`,
