@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth'
+import { onAuthStateChanged, signInWithRedirect, signOut as firebaseSignOut } from 'firebase/auth'
 import { auth, googleProvider, isFirebaseConfigured } from './lib/firebase'
 import './App.css'
 
@@ -89,9 +89,13 @@ function App() {
     setAuthError('')
     setIsSigningIn(true)
     try {
-      await signInWithPopup(auth, googleProvider)
+      await signInWithRedirect(auth, googleProvider)
     } catch (error) {
-      setAuthError(error.code === 'auth/popup-closed-by-user' ? 'The Google sign-in window was closed.' : error.message)
+      const messages = {
+        'auth/unauthorized-domain': `Firebase does not allow ${window.location.hostname} yet. Add this domain in Firebase Authentication settings.`,
+        'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase Authentication yet.',
+      }
+      setAuthError(messages[error.code] || 'Google sign-in could not start. Check your Firebase Authentication settings and try again.')
       setIsSigningIn(false)
     }
   }

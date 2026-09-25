@@ -34,9 +34,9 @@ npm install
 1. Create a Firebase project and register a Web app.
 2. Enable **Authentication > Sign-in method > Google** in the Firebase console.
 3. Copy `.env.example` to `.env.local` and fill in the Firebase Web app configuration values.
-4. Add `localhost` and your Vercel domain under **Authentication > Settings > Authorized domains**.
+4. Add `localhost`, `gim1203-hue.github.io`, and your Vercel domain under **Authentication > Settings > Authorized domains**.
 
-The app opens Google's consent flow with Firebase `signInWithPopup`. The learning workspace is private and the signed-in user's Google profile supplies the displayed name and initials.
+The app sends users to Google's consent flow with Firebase `signInWithRedirect`, then returns them to the app. The learning workspace is private and the signed-in user's Google profile supplies the displayed name and initials.
 
 ## Deploying to Vercel
 

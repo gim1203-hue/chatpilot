@@ -31,6 +31,8 @@ jobs:
         run: npm ci
 
       - name: Build
+        env:
+          VITE_BASE_PATH: /chatpilot/
         run: npm run build
 
       - name: Configure GitHub Pages
