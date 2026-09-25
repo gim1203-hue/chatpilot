@@ -114,6 +114,7 @@ function App() {
     setAuthError('')
     setIsSigningIn(true)
     try {
+      await setPersistence(auth, browserLocalPersistence)
       await signInWithRedirect(auth, googleProvider)
     } catch (error) {
       const messages = {
