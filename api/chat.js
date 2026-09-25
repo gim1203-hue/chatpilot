@@ -23,8 +23,7 @@ export default async function handler(request, response) {
 
   try {
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
+`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`,      {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -33,8 +32,7 @@ export default async function handler(request, response) {
           },
           contents,
           tools: [{ googleSearch: {} }],
-          generationConfig: { temperature: 0.4, maxOutputTokens: 1200 },
-        }),
+generationConfig: { maxOutputTokens: 1200 },        }),
       },
     )
 
