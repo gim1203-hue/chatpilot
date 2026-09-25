@@ -22,6 +22,7 @@ ChatPilot is a focused React study assistant for learning frontend fundamentals 
 - CSS
 - Oxlint
 - Firebase Authentication
+- Gemini AI with Google Search grounding
 
 ## Installation
 
@@ -52,6 +53,10 @@ VITE_FIREBASE_APP_ID
 ```
 
 The included `vercel.json` keeps client-side routes working on refresh. The app uses the domain root as its Vite base path for Vercel deployment.
+
+## AI Answers
+
+The chat uses a Vercel serverless function at `/api/chat`. Add `GEMINI_API_KEY` in Vercel Project Settings > Environment Variables. The key must be a Gemini API key and stays server-side. The endpoint uses Gemini with Google Search grounding so questions can receive current web context.
 
 ## Running Locally
 
