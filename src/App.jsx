@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { onAuthStateChanged, signInWithRedirect, signOut as firebaseSignOut } from 'firebase/auth'
+import { browserLocalPersistence, getRedirectResult, onAuthStateChanged, setPersistence, signInWithRedirect, signOut as firebaseSignOut } from 'firebase/auth'
 import { auth, googleProvider, isFirebaseConfigured } from './lib/firebase'
 import './App.css'
 
@@ -73,6 +73,18 @@ function App() {
 
   useEffect(() => {
     if (!auth) return undefined
+
+    setPersistence(auth, browserLocalPersistence).catch((error) => {
+      setAuthError(error.message)
+    })
+
+    getRedirectResult(auth).catch((error) => {
+      const messages = {
+        'auth/unauthorized-domain': `Firebase does not allow ${window.location.hostname} yet. Add this domain in Firebase Authentication settings.`,
+        'auth/operation-not-allowed': 'Google sign-in is not enabled in Firebase Authentication yet.',
+      }
+      setAuthError(messages[error.code] || 'Google sign-in could not be completed. Please try again.')
+    })
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setSession(currentUser)
